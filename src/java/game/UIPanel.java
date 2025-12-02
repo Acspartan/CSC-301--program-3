@@ -31,6 +31,12 @@ public class UIPanel extends JPanel implements Observer {
         this.score += incrScore;
         this.scoreLabel.setText("Score: " + score);
     }
++
++    // EDITED FROM ORIGINAL: per-move penalty; called on each Pacman move
++    @Override
++    public void updateMove() {
++        updateScore(-1); // time penalty per move
++    }
 
     public int getScore() {
         return score;
@@ -44,13 +50,15 @@ public class UIPanel extends JPanel implements Observer {
 
     @Override
     public void updateSuperPacGumEaten(SuperPacGum spg) {
-        updateScore(100);
+        // EDITED FROM ORIGINAL: capsules (SuperPacGum) give +500 points
+        updateScore(500);
     }
 
     @Override
     public void updateGhostCollision(Ghost gh) {
         if (gh.getState() instanceof FrightenedMode) { //Dans le cas où Pacman est en contact avec un fantôme on ne met à jour le score que lorsque ce dernier est en mode "frightened"
-            updateScore(500);
+            // EDITED FROM ORIGINAL: eating a ghost during scared timer gives +200
+            updateScore(200);
         }
     }
 }

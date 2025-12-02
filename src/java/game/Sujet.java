@@ -11,4 +11,5 @@ public interface Sujet {
     void notifyObserverPacGumEaten(PacGum pg);
     void notifyObserverSuperPacGumEaten(SuperPacGum spg);
     void notifyObserverGhostCollision(Ghost gh);
+    void notifyObserverMove(); // EDITED FROM ORIGINAL: added to notify observers when Pacman moves
 }

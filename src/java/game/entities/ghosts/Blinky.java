@@ -22,12 +22,9 @@ public class Blinky extends Ghost {
     public void update() {
         if (!Game.getFirstInput()) return; // same behavior as Ghost.update
 
+        // Handle animation timer for frightened mode
         if (state == frightenedMode) {
             frightenedTimer++;
-
-            if (frightenedTimer >= (60 * 7)) {
-                state.timerFrightenedModeOver();
-            }
         }
 
         if (state == chaseMode || state == scatterMode) {

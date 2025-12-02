@@ -82,6 +82,8 @@ public class Pacman extends MovingEntity implements Sujet {
         //S'il n'y a pas de mur à la prochaine position potentielle de Pacman, on met à jour sa position
         if (!WallCollisionDetector.checkWallCollision(this, xSpd, ySpd)) {
             updatePosition();
+            // EDITED FROM ORIGINAL: notify observers that Pacman made a move (applies per-move penalties and decrements scared timers)
+            notifyObserverMove();
         }
     }
 
@@ -113,4 +115,11 @@ public class Pacman extends MovingEntity implements Sujet {
     public void notifyObserverGhostCollision(Ghost gh) {
         observerCollection.forEach(obs -> obs.updateGhostCollision(gh));
     }
-}
++
++    // EDITED FROM ORIGINAL: notify observers that Pacman made a move (used for per-move penalties and scared timer updates)
++    @Override
++    public void notifyObserverMove() {
++        observerCollection.forEach(obs -> obs.updateMove());
++    }
++}
+

@@ -9,4 +9,5 @@ public interface Observer {
     void updatePacGumEaten(PacGum pg);
     void updateSuperPacGumEaten(SuperPacGum spg);
     void updateGhostCollision(Ghost gh);
+    void updateMove(); // EDITED FROM ORIGINAL: notify observers when Pacman moves (per-move effects)
 }

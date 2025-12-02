@@ -21,7 +21,8 @@ public abstract class Ghost extends MovingEntity {
     protected final GhostState houseMode;
 
     protected int modeTimer = 0;
-    protected int frightenedTimer = 0;
+    protected int frightenedTimer = 0; // used for frightened animation only
+    protected int frightenedMovesRemaining = 0; // EDITED FROM ORIGINAL: move-based scared timer (number of Pacman moves remaining)
     protected boolean isChasing = false;
 
     protected static BufferedImage frightenedSprite1;
@@ -61,6 +62,7 @@ public abstract class Ghost extends MovingEntity {
 
     public void switchFrightenedMode() {
         frightenedTimer = 0;
+        frightenedMovesRemaining = 10; // EDITED FROM ORIGINAL: frightened lasts 10 Pacman moves
         state = frightenedMode;
     }
 
@@ -92,17 +94,24 @@ public abstract class Ghost extends MovingEntity {
         return state;
     }
 
+    // EDITED FROM ORIGINAL: decrement frightened move counter; when it reaches zero, notify state
+    public void reduceFrightenedMove() {
+        if (frightenedMovesRemaining > 0) {
+            frightenedMovesRemaining--;
+            if (frightenedMovesRemaining <= 0) {
+                state.timerFrightenedModeOver();
+            }
+        }
+    }
+
     @Override
     public void update() {
         if (!Game.getFirstInput()) return; //Les fantômes ne bougent pas tant que le joueur n'a pas bougé
 
         //Si le fantôme est dans l'état effrayé, un timer de 7s se lance, et l'état sera notifié ensuite afin d'appliquer la transition adéquate
         if (state == frightenedMode) {
+            // keep animation timer for rendering only
             frightenedTimer++;
-
-            if (frightenedTimer >= (60 * 7)) {
-                state.timerFrightenedModeOver();
-            }
         }
 
         //Les fantômes alternent entre l'état chaseMode et scatterMode avec un timer

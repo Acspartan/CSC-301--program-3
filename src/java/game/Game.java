@@ -155,6 +155,15 @@ public class Game implements Observer {
         }
     }
 
+    // EDITED FROM ORIGINAL: handle per-move notifications (called by Pacman when it moves)
+    @Override
+    public void updateMove() {
+        // Decrement frightened counters on each ghost; ghosts manage their own transition when counter hits zero
+        for (Ghost gh : ghosts) {
+            gh.reduceFrightenedMove();
+        }
+    }
+
     public static void setFirstInput(boolean b) {
         firstInput = b;
     }
