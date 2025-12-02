@@ -14,11 +14,11 @@ import java.io.IOException;
 public abstract class Ghost extends MovingEntity {
     protected GhostState state;
 
-    protected final GhostState chaseMode;
-    protected final GhostState scatterMode;
-    protected final GhostState frightenedMode;
-    protected final GhostState eatenMode;
-    protected final GhostState houseMode;
+    protected GhostState chaseMode;
+    protected GhostState scatterMode;
+    protected GhostState frightenedMode;
+    protected GhostState eatenMode;
+    protected GhostState houseMode;
 
     protected int modeTimer = 0;
     protected int frightenedTimer = 0; // used for frightened animation only
@@ -157,3 +157,4 @@ public abstract class Ghost extends MovingEntity {
 
     }
 }
+
