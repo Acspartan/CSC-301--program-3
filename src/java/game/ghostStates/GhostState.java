@@ -1,8 +1,14 @@
 package game.ghostStates;
 
+import game.Game;
+import game.GameplayPanel;
 import game.entities.ghosts.Ghost;
 import game.utils.Utils;
 import game.utils.WallCollisionDetector;
+
+import java.util.*;
+import java.util.Queue;
+import java.util.LinkedList;
 
 //Classe abstrate pour décrire les différents états de fantômes
 public abstract class GhostState {
@@ -24,73 +30,129 @@ public abstract class GhostState {
         return new int[2];
     } //retourne le point que va cibler le fantôme
 
-    //Méthode pour calculer la prochaine direction que le fantôme va prendre
+    //Méthode pour calculer la prochaine direction que le fantôme va prendre (using true BFS instead of greedy approach)
+    // EDITED FROM ORIGINAL: Completely refactored from greedy distance calculation to true BFS
+    // CHANGE: Replaced simple distance-based greedy algorithm with Breadth-First Search
+    // BEFORE: Calculated straight-line distance to target and picked the closest direction (not optimal through maze)
+    // AFTER: Uses BFS to find the shortest path through the maze (optimal pathfinding)
+    // BENEFIT: All ghosts using computeNextDir() now have intelligent pathfinding instead of greedy behavior
     public void computeNextDir() {
-        int new_xSpd = 0;
-        int new_ySpd = 0;
-
         if (!ghost.onTheGrid()) return; //Le fantôme doit être sur une "case" de la zone de jeu
         if (!ghost.onGameplayWindow()) return;  //Le fantôme doit être dans la zone de jeu
 
-        double minDist = Double.MAX_VALUE; //distance minimale courante entre le fantôme et la cible selon sa prochaine direction
+        int cellSize = 8; // consistent with level loading
+        int cols = GameplayPanel.width / cellSize;
+        int rows = GameplayPanel.height / cellSize;
 
-        //Si le fantôme va actuellement vers la gauche et qu'il n'y a pas de mur à gauche...
-        if (ghost.getxSpd() <= 0 && !WallCollisionDetector.checkWallCollision(ghost, -ghost.getSpd(), 0)) {
-            //On regarde la distance entre la position ciblée et la position potentielle du fantôme si ce dernier irait vers la gauche
-            double distance = Utils.getDistance(ghost.getxPos() - ghost.getSpd(), ghost.getyPos(), getTargetPosition()[0], getTargetPosition()[1]);
-
-            //Si cette distance est inférieure à la distance minimale courante, on dit que le fantôme va vers la gauche et on met à jour la distance minimale
-            if (distance < minDist) {
-                new_xSpd = -ghost.getSpd();
-                new_ySpd = 0;
-                minDist = distance;
-            }
+        // CHANGED: Build maze representation for BFS pathfinding
+        // Create a grid where 1 = wall (impassable) and 0 = free (passable)
+        int[][] maze = new int[rows][cols];
+        for (int r = 0; r < rows; r++) Arrays.fill(maze[r], 0);
+        for (game.entities.Wall w : Game.getWalls()) {
+            int cx = w.getxPos() / cellSize;
+            int cy = w.getyPos() / cellSize;
+            if (cy >= 0 && cy < rows && cx >= 0 && cx < cols) maze[cy][cx] = 1;
         }
 
-        //Même chose en testant vers la droite
-        if (ghost.getxSpd() >= 0 && !WallCollisionDetector.checkWallCollision(ghost, ghost.getSpd(), 0)) {
-            double distance = Utils.getDistance(ghost.getxPos() + ghost.getSpd(), ghost.getyPos(),  getTargetPosition()[0], getTargetPosition()[1]);
-            if (distance < minDist) {
-                new_xSpd = ghost.getSpd();
-                new_ySpd = 0;
-                minDist = distance;
-            }
-        }
+        int startR = ghost.getyPos() / cellSize;
+        int startC = ghost.getxPos() / cellSize;
+        int goalR = getTargetPosition()[1] / cellSize;
+        int goalC = getTargetPosition()[0] / cellSize;
 
-        //Même chose en testant vers le haut
-        if (ghost.getySpd() <= 0 && !WallCollisionDetector.checkWallCollision(ghost, 0, -ghost.getSpd())) {
-            double distance = Utils.getDistance(ghost.getxPos(), ghost.getyPos() - ghost.getSpd(), getTargetPosition()[0], getTargetPosition()[1]);
-            if (distance < minDist) {
-                new_xSpd = 0;
-                new_ySpd = -ghost.getSpd();
-                minDist = distance;
-            }
-        }
+        int[] nextCell = bfsNextMove(maze, startR, startC, goalR, goalC);
+        if (nextCell != null) {
+            int targetR = nextCell[0];
+            int targetC = nextCell[1];
 
-        //Même chose en testant vers le bas
-        if (ghost.getySpd() >= 0 && !WallCollisionDetector.checkWallCollision(ghost, 0, ghost.getSpd())) {
-            double distance = Utils.getDistance(ghost.getxPos(), ghost.getyPos() + ghost.getSpd(), getTargetPosition()[0], getTargetPosition()[1]);
-            if (distance < minDist) {
-                new_xSpd = 0;
-                new_ySpd = ghost.getSpd();
-                minDist = distance;
-            }
-        }
+            // Convert cell to pixel target
+            int targetX = targetC * cellSize;
+            int targetY = targetR * cellSize;
 
-        if (new_xSpd == 0 && new_ySpd == 0) return;
-
-        //Une fois tous les cas testés, on change la direction du fantôme (au cas où, comme cette direction est définie par une vitesse horizontale et une vitesse verticale, on fait quand même une vérification afin qu'il ne puisse pas aller en diagonale)
-        if (Math.abs(new_xSpd) != Math.abs(new_ySpd)) {
-            ghost.setxSpd(new_xSpd);
-            ghost.setySpd(new_ySpd);
-        } else {
-            if (new_xSpd != 0) {
-                ghost.setxSpd(0);
-                ghost.setxSpd(new_ySpd);
-            }else{
-                ghost.setxSpd(new_xSpd);
+            // Decide direction avoiding walls (fallback to no movement if collision)
+            if (ghost.getxPos() > targetX && !WallCollisionDetector.checkWallCollision(ghost, -ghost.getSpd(), 0)) {
+                ghost.setxSpd(-ghost.getSpd());
                 ghost.setySpd(0);
+            } else if (ghost.getxPos() < targetX && !WallCollisionDetector.checkWallCollision(ghost, ghost.getSpd(), 0)) {
+                ghost.setxSpd(ghost.getSpd());
+                ghost.setySpd(0);
+            } else if (ghost.getyPos() > targetY && !WallCollisionDetector.checkWallCollision(ghost, 0, -ghost.getSpd())) {
+                ghost.setxSpd(0);
+                ghost.setySpd(-ghost.getSpd());
+            } else if (ghost.getyPos() < targetY && !WallCollisionDetector.checkWallCollision(ghost, 0, ghost.getSpd())) {
+                ghost.setxSpd(0);
+                ghost.setySpd(ghost.getSpd());
             }
         }
+    }
+
+    // Helper method for true BFS pathfinding
+    // CHANGED: True Breadth-First Search implementation (moved from individual ghost classes)
+    // This replaces the greedy distance calculation that was used before
+    // BFS explores the maze level-by-level, guaranteeing the shortest path
+    private int[] bfsNextMove(int[][] maze, int startR, int startC, int goalR, int goalC) {
+        int rows = maze.length;
+        int cols = maze[0].length;
+
+        boolean[][] visited = new boolean[rows][cols];
+        int[][] parentR = new int[rows][cols];
+        int[][] parentC = new int[rows][cols];
+
+        for (int[] row : parentR) Arrays.fill(row, -1);
+        for (int[] row : parentC) Arrays.fill(row, -1);
+
+        Queue<int[]> q = new LinkedList<>();
+        q.add(new int[]{startR, startC});
+        visited[startR][startC] = true;
+
+        int[][] directions = {
+                {-1, 0}, // up
+                {1, 0},  // down
+                {0, -1}, // left
+                {0, 1}   // right
+        };
+
+        while (!q.isEmpty()) {
+            int[] cur = q.poll();
+            int r = cur[0];
+            int c = cur[1];
+
+            if (r == goalR && c == goalC) break;
+
+            for (int[] d : directions) {
+                int nr = r + d[0];
+                int nc = c + d[1];
+
+                if (isValid(nr, nc, maze, visited)) {
+                    visited[nr][nc] = true;
+                    parentR[nr][nc] = r;
+                    parentC[nr][nc] = c;
+                    q.add(new int[]{nr, nc});
+                }
+            }
+        }
+
+        if (goalR < 0 || goalR >= rows || goalC < 0 || goalC >= cols) return null;
+        if (!visited[goalR][goalC]) return null;
+
+        int r = goalR;
+        int c = goalC;
+
+        while (!(parentR[r][c] == startR && parentC[r][c] == startC)) {
+            int pr = parentR[r][c];
+            int pc = parentC[r][c];
+            r = pr;
+            c = pc;
+            if (r == -1 || c == -1) return null; // safety
+        }
+
+        return new int[]{r, c};
+    }
+
+    // CHANGED: Validation method for BFS (checks if cell is in bounds, not a wall, and not visited)
+    private boolean isValid(int r, int c, int[][] maze, boolean[][] visited) {
+        return r >= 0 && r < maze.length &&
+                c >= 0 && c < maze[0].length &&
+                maze[r][c] == 0 &&
+                !visited[r][c];
     }
 }
