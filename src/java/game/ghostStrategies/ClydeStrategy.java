@@ -5,14 +5,10 @@ import game.GameplayPanel;
 import game.entities.ghosts.Ghost;
 import game.utils.Utils;
 
-//For Clyde's random movement
-import java.util.Random;
-
 //Stratégie concrète de Clyde (le fantôme jaune)
 public class ClydeStrategy implements IGhostStrategy{
     private Ghost ghost;
-    private Random random = new Random();
-
+    
     //When clyde gets scared he will run to corner
     private int[] runAway = null;
 
@@ -40,7 +36,7 @@ public class ClydeStrategy implements IGhostStrategy{
         }else{
             //Go to random corner
             if (runAway == null) {
-                runAway = pickRandomCorner();
+                runAway = pickFarthestCorner();
             }
             return runAway;
         }
@@ -56,29 +52,29 @@ public class ClydeStrategy implements IGhostStrategy{
     }
 
     //Choose one of the corners at random
-    private int[] pickRandomCorner() {
-        int[] position = new int[2];
-        int corner = random.nextInt(4);
+    private int[] pickFarthestCorner() {
+        int pacX = Game.getPacman().getxPos();
+        int pacY = Game.getPacman().getyPos();
 
-        switch (corner) {
-            case 0: //top left
-                position[0] = 0;
-                position[1] = 0;
-                break;
-            case 1: //top right
-                position[0] = GameplayPanel.width;
-                position[1] = 0;
-                break;
-            case 2: //bottom left
-                position[0] = 0;
-                position[1] = GameplayPanel.height;
-                break;
-            case 3: //bottom right
-                position[0] = GameplayPanel.width;
-                position[1] = GameplayPanel.height;
-                break;
+        //4 possible corners
+        int[][] corners = new int[][]{
+            {0,0},
+            {GameplayPanel.height},
+            {GameplayPanel.width, GameplayPanel.height}
+        };
+
+        double maxDist = -1;
+        int[] bestCorner = corners[0];
+
+        for (int[] c : corners) {
+            double d = Utils.getDistance(pacX, pacY, c[0], c[1]);
+            if (d > maxDist) {
+                maxDist = d;
+                bestCorner = c;
+            }
         }
-        return position;
+        return bestCorner;
     }
 }
+
 
