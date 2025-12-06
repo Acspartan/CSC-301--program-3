@@ -2,11 +2,11 @@
 
 **Overview and Functional Changes**
 
-This document summarizes major modifications to the Pac-Man game, focusing on gameplay mechanics and pathfinding algorithms. The scoring system was adjusted: SuperPacGum now awards 500 points (previously 100), regular PacGum remains 10 points, eating scared ghosts awards 200 points (previously 500), and per-move penalty is -1 point to add time pressure. The ghost vulnerability system transitioned from frame-based (7 seconds) to move-based (10 Pacman moves), making scared duration fairer and adaptable to player pace. The codebase was refactored to create BFSGhost, a new abstract base class centralizing Breadth-First Search pathfinding logic. Both Blinky and Inky now inherit from BFSGhost, eliminating code duplication. GhostState.computeNextDir() was completely refactored to implement true Breadth-First Search instead of the original greedy straight-line distance heuristic, ensuring all ghosts compute genuine shortest paths to their targets.
+This document summarizes major modifications to the Pac-Man game, focusing on gameplay mechanics and pathfinding algorithms. The scoring system was adjusted: SuperPacGum now awards 500 points (previously 100), regular PacGum remains 10 points, eating scared ghosts awards 200 points (previously 500), and per-move penalty is -1 point to add time pressure. The ghost vulnerability system transitioned from frame-based (7 seconds) to move-based (10 Pacman moves), making scared ghost duration fairer and adaptable to player pace. The codebase was refactored to create BFSGhost, a new abstract base class centralizing Breadth-First Search pathfinding logic. Both Blinky and Inky now inherit from BFSGhost, eliminating code duplication. GhostState.computeNextDir() was completely refactored to implement true Breadth-First Search instead of the original greedy straight-line distance heuristic, ensuring all ghosts compute genuine shortest paths to their targets.
 
 **Design Patterns and Implementation**
 
-Four design patterns manage clean separation of concerns. Abstract Factory (ghostFactory directory) encapsulates ghost creation through specialized factories (BlinkyFactory, ClydeFactory, InkyFactory, PinkyFactory), enabling extensibility without modifying Game.java. State Pattern (ghostStates directory) manages six ghost modes—HouseMode, ChaseMode, ScatterMode, FrightenedMode, EatenMode, PinkyChaseMode—allowing dynamic state transitions. Each state overrides update() and computeNextDir(); the key improvement is GhostState.computeNextDir() now uses true Breadth-First Search instead of greedy heuristics, guaranteeing optimal shortest paths. Strategy Pattern (ghostStrategies directory) defines chase targeting through IGhostStrategy: Blinky targets Pacman directly, Pinky targets two cells ahead, Inky calculates position from Blinky-Pacman relative distance, and Clyde switches between chasing (when far) and scattering (when close). Observer Pattern manages scoring and timers: Pacman.notifyObserverMove() triggers Game.notifyObserverMove(), which calls updateMove() on all observers. Game's updateMove() decrements ghost scared timers; UIPanel's updateMove() decrements score by 1 point, cleanly separating mechanics from scoring.
+Four design patterns are used to manage clean separation of concerns. Abstract Factory (ghostFactory directory) encapsulates ghost creation through specialized factories (BlinkyFactory, ClydeFactory, InkyFactory, PinkyFactory), enabling extensibility without modifying Game.java. State Pattern (ghostStates directory) manages six ghost modes—HouseMode, ChaseMode, ScatterMode, FrightenedMode, EatenMode, PinkyChaseMode—allowing dynamic state transitions. Each state overrides update() and computeNextDir(); the key improvement is GhostState.computeNextDir() now uses true Breadth-First Search instead of greedy heuristics, guaranteeing optimal shortest paths. Strategy Pattern (ghostStrategies directory) defines chase targeting through IGhostStrategy: Blinky targets Pacman directly, Pinky targets two cells ahead, Inky calculates position from Blinky-Pacman relative distance, and Clyde switches between chasing (when far) and scattering (when close). Observer Pattern manages scoring and timers: Pacman.notifyObserverMove() triggers Game.notifyObserverMove(), which calls updateMove() on all observers. Game's updateMove() decrements scared ghost timers; UIPanel's updateMove() decrements score by 1 point, cleanly separating mechanics from scoring.
 # Justification of Design Patterns Chosen
 
 ## Abstract Factory
@@ -43,11 +43,11 @@ When Pacman comes into contact with a PacGum, a SuperPacGum, or a ghost, other c
 
 **Implementation Details and How It Works**
 
-The move-based scared timer operates through the observer notification chain: Pacman.notifyObserverMove() triggers Game.updateMove(), which calls reduceFrightenedMove() on each ghost. This method decrements frightenedMovesRemaining and transitions the ghost out of FrightenedMode when the counter reaches zero. BFS pathfinding operates on an 8-pixel cell grid matching the level's cell size. When a ghost in chase mode aligns to the grid, GhostState.computeNextDir() builds a 2D boolean grid of walls and free cells, executes queue-based BFS from the ghost's current cell to its target, maintains visited sets and parent pointers for path reconstruction, and returns the next movement cell. For Inky, the hybrid implementation extends BFSGhost and overrides getTargetRow() and getTargetCol() to delegate target calculation to its state; when in PinkyChaseMode, that state uses InkyStrategy to calculate a target from Blinky's location and Pacman's relative position, then inherited bfsNextMove() finds the shortest path. Modified files include: Observer.java and Sujet.java (added signatures), Pacman.java (calls notifyObserverMove()), UIPanel.java (scoring), Ghost.java (frightened timer), Game.java (implements updateMove()), Blinky.java and Inky.java (now extend BFSGhost), and new BFSGhost.java abstract class (provides bfsNextMove() and isValid() helpers).
+The move-based scared ghost timer operates through the observer notification chain: Pacman.notifyObserverMove() triggers Game.updateMove(), which calls reduceFrightenedMove() on each ghost. This method decrements frightenedMovesRemaining and transitions the ghost out of FrightenedMode when the counter reaches zero. BFS pathfinding operates on an 8-pixel cell grid matching the level's cell size. When a ghost in chase mode aligns to the grid, GhostState.computeNextDir() builds a 2D boolean grid of walls and free cells, executes queue-based BFS from the ghost's current cell to its target, maintains visited sets and parent pointers for path reconstruction, and returns the next movement cell. For Inky, the hybrid implementation extends BFSGhost and overrides getTargetRow() and getTargetCol() to delegate target calculation to its state; when in PinkyChaseMode, that state uses InkyStrategy to calculate a target from Blinky's location and Pacman's relative position, then inherited bfsNextMove() finds the shortest path. Modified files include: Observer.java and Sujet.java (added signatures), Pacman.java (calls notifyObserverMove()), UIPanel.java (scoring), Ghost.java (frightened timer), Game.java (implements updateMove()), Blinky.java and Inky.java (now extend BFSGhost), and new BFSGhost.java abstract class (provides bfsNextMove() and isValid() helpers).
 
 **Strengths, Limitations, and References**
 
-Strengths include deterministic shortest-path behavior guaranteeing optimal ghost movement and intelligent chase tactics; fair move-based scared timer adapting to player pace; reduced code duplication improving maintainability; and clear design pattern mapping enhancing readability. Limitations include: BFS per-grid-alignment is more CPU-intensive than greedy heuristics (acceptable on modern hardware with small grids); BFS operates only on the 8-pixel cell grid, requiring different approaches for finer navigation; and perfectly rational ghost paths reduce arcade unpredictability. Code references: BFSGhost.java (new abstract base centralizing BFS), Blinky.java and Inky.java (extend BFSGhost), GhostState.java (core BFS implementation). External references: Wikipedia's Breadth-first search (https://en.wikipedia.org/wiki/Breadth-first-search), Red Blob Games' pathfinding guide (https://www.redblobgames.com/pathfinding/), The Pac-Man Dossier by Jamey Pittman.
+Strengths include deterministic shortest-path behavior guaranteeing optimal ghost movement and intelligent chase tactics; fair move-based scared ghost timer adapting to player pace; reduced code duplication improving maintainability; and clear design pattern mapping enhancing readability. Limitations include: BFS per-grid-alignment is more CPU-intensive than greedy heuristics (acceptable on modern hardware with small grids); BFS operates only on the 8-pixel cell grid, requiring different approaches for finer navigation; and perfectly rational ghost paths reduce arcade unpredictability. Code references: BFSGhost.java (new abstract base centralizing BFS), Blinky.java and Inky.java (extend BFSGhost), GhostState.java (core BFS implementation). External references: Wikipedia's Breadth-first search (https://en.wikipedia.org/wiki/Breadth-first-search), Red Blob Games' pathfinding guide (https://www.redblobgames.com/pathfinding/), The Pac-Man Dossier by Jamey Pittman.
 
 **Learning Outcomes and Testing Validation**
 
@@ -128,74 +128,6 @@ CO3. Algorithms (3.0 pts threshold)
 
 For the pinky ghost, we are using a strategy that the ghost will target 2 tiles in front of pacman in the direction that pacman is moving. It uses its normal scatter target as the top left corner still. At first, the ghosts used the same greedy movement logic by choosing a direction that minimized the Euclidean distance to pacman. We upgraded pinky by using an A* algorithm, so it still targets 2 tiles ahead but instead of the greedy approach it computes the shortest path to the target. To make the A* algorithm fit with the game, we converted the pixels and walls to a grid for the ghosts and pacman. Converting their positions to grid coordinates helped in terms of how they moved being through tiles instead of pixels for A*. We built the grid based on the game’s actual maze using 0s and 1s for the walls are and are not. For pinky’s specific strategy, we made it so pinky will recalculate his direction when on a tile using the grid coordinates of his current position with is target position being 2 tiles in front of pacman. As for Clyde, we kept the original program’s greedy movement logic. However, we also decided to convert his position into tile coordinates from a grid too. We used Geeks4Geeks to implement the use of Manhattan distance in tiles for when Clyde gets too close to pacman. When he does get too close, we decided that Clyde will pick the farthest corner from pacman and run to there. His movement uses the same of the original program, but his target changes depending on his distance from pacman.
 
----
-
-## Advanced Pathfinding: A* Algorithm Implementation
-
-**Introduction of A* for Optimized Ghost Navigation**
-
-Building on the BFS foundation, the implementation now includes A* (A-star) pathfinding for more efficient ghost navigation. While BFS guarantees shortest paths with O(V + E) complexity, A* uses a heuristic-guided search with O(V + E) or better performance depending on the heuristic quality. Manhattan distance serves as the heuristic, guiding the search toward the goal more efficiently than blind BFS.
-
-**A* Algorithm Details**
-
-The A* implementation (`AStar.java`) includes:
-- **Node class:** Tracks gCost (actual cost from start), hCost (estimated cost to goal), and fCost (g + h)
-- **Priority Queue:** Processes nodes in order of lowest fCost, exploring most promising paths first
-- **Manhattan Distance Heuristic:** Calculates h-value as absolute row difference plus absolute column difference
-- **Path Reconstruction:** Backtracks from goal through parent pointers to return the next step toward goal
-- **Fallback Mechanism:** Returns null if no path exists; calling ghost state uses greedy movement as fallback
-
-**Pinky's A* Implementation**
-
-Pinky now uses A* pathfinding (`PinkyChaseMode.java`) while maintaining the same strategic targeting (2 cells ahead of Pacman):
-1. Calculates target position using PinkyStrategy
-2. Converts ghost and target positions to grid coordinates
-3. Generates maze grid (0 = free, 1 = wall) using PacmanGrid
-4. Invokes AStar.findPath() to compute shortest path
-5. Follows the next cell returned by A*, or falls back to greedy distance-minimization if no path exists
-
-**Inky's Hybrid Implementation**
-
-Inky implements a hybrid approach (`InkyChaseMode.java`) combining:
-- **Strategic Targeting:** Uses InkyStrategy, which calculates target based on Blinky's position and Pacman's relative location
-- **A* Pathfinding:** Applies A* to find shortest path to the calculated target (unlike original InkyStrategy which would return raw target coordinates)
-- **Result:** More intelligent than Blinky (which uses BFS to chase Pacman directly) and more efficient than pure greedy heuristics
-
-**Grid Utilities and Infrastructure**
-
-Three new utility classes support the pathfinding system:
-- **GridUtils.java:** Converts between pixel and grid coordinates (8-pixel cells), provides Manhattan distance calculation, bounds checking
-- **PacmanGrid.java:** Generates 2D grid representation by scanning Game.getWalls(), creates 0/1 grid matching level layout
-- **AStar.java:** Complete A* implementation with priority queue, node tracking, heuristic evaluation, path reconstruction
-
-**Complexity Analysis**
-
-- **Time Complexity:** O(V log V + E) where V = grid cells, E = edges between adjacent cells; heuristic reduces effective search space
-- **Space Complexity:** O(V) for visited array, node map, and priority queue
-- **Comparison:** A* is asymptotically same as BFS for worst case, but much faster in practice due to heuristic pruning; on small grids (56x62 cells), this is negligible but demonstrates proper algorithm application
-
-**Performance Characteristics**
-
-- A* explores fewer nodes than BFS when heuristic is accurate
-- Manhattan distance is admissible (never overestimates) and consistent, making A* optimal
-- On grid sizes used in game (8-pixel cells in 448x496 window = 56x62 grid), performance difference is imperceptible but algorithm demonstrates learning outcome CO7 (shortest path algorithms)
-
-**Integration with Existing Patterns**
-
-A* maintains compatibility with all existing design patterns:
-- **State Pattern:** PinkyChaseMode and InkyChaseMode extend GhostState, override computeNextDir() with A* logic
-- **Strategy Pattern:** Still uses PinkyStrategy and InkyStrategy for target calculation; A* is independent pathfinding layer
-- **Factory Pattern:** Unchanged; ghosts still created through factories, just use new chase modes
-- **Observer Pattern:** Unaffected; scoring and notifications work same way
-
-**Test Coverage**
-
-To validate A* implementation:
-1. Verify Pinky follows walls around obstacles (not cutting through walls)
-2. Verify Inky targets strategically while navigating optimally
-3. Compare paths: A* should find same shortest paths as BFS but explore fewer nodes
-4. Test edge cases: surrounded ghosts should move toward target, unreachable targets should trigger greedy fallback
-
 CItations:
 https://www.geeksforgeeks.org/dsa/calculate-the-manhattan-distance-between-two-cells-of-given-2d-array/
 https://www.geeksforgeeks.org/dsa/a-search-algorithm/
@@ -204,4 +136,5 @@ https://pacman.fandom.com/wiki/Maze_Ghost_AI_Behaviors
 https://www.geeksforgeeks.org/dsa/breadth-first-search-or-bfs-for-a-graph/
 https://stackoverflow.com/questions/16492731/how-to-create-a-path-tracing-algorithm-for-pacman
 Pac- man GitHub refrences:https://github.com/lucasvigier/pacman/blob/main/src/java/game/Game.java 
+
 
