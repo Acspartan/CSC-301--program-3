@@ -135,6 +135,8 @@ https://www.geeksforgeeks.org/dsa/a-search-algorithm/
 https://pacman.fandom.com/wiki/Maze_Ghost_AI_Behaviors
 https://www.geeksforgeeks.org/dsa/breadth-first-search-or-bfs-for-a-graph/
 https://stackoverflow.com/questions/16492731/how-to-create-a-path-tracing-algorithm-for-pacman
+VS code chat bot to orginise and keep track of chnages to use in documentation
 Pac- man GitHub refrences:https://github.com/lucasvigier/pacman/blob/main/src/java/game/Game.java 
+
 
 
